@@ -1,5 +1,6 @@
-/*
-    Consider a system with one parent process and two child processes A and B. There is a shared
+/**
+ * 
+ * Consider a system with one parent process and two child processes A and B. There is a shared
     signed integer X initialized to 0. Process A increments X by one 10 times in a for loop. Process
     B decrements X by one 10 times in a for loop. After both A and B finish, the parent process
     prints out the final value of X.
@@ -10,8 +11,13 @@
     appropriate points. Note that if there is no race condition, the value of X finally should be 0.
     Simulating race conditions means that if you run the program a few times, sometimes the final
     value of X printed by your program should be non-zero.
-    
+
+    Add synchronization code based on semaphores toprocess A and B above so that there is no
+    possibility of race conditions. Use the calls semget(), semop(), semctl() in Linux to create and
+    manage sempahores.
 */
+
+
 
 
 #include <stdio.h>
@@ -28,9 +34,13 @@
 
 #define SHM_SIZE 1024
 int start = 0;
+sem_t* y;
 int *data;
 
 int main() {
+    y = (sem_t*) mmap(NULL, sizeof (int) , PROT_READ | PROT_WRITE,
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    sem_init(y, 1, 1);
     int shmid, mode;
     int status;
     key_t key = ftok("file.txt", 'R');
@@ -47,22 +57,26 @@ int main() {
     if (child_a == 0) {
         /* Child A code */
         for(int i=1; i<=10000; i++) {
+            sem_wait(y);
             data = shmat(shmid, (void *)0, 0);
             *data = *data - 1;
+            sem_post(y);
         }
     } else if(child_a > 0) {
         child_b = fork();
         if(child_b == 0) {
             for(int i=1; i<=10000; i++) {
+                sem_wait(y);
                 data = (int*) shmat(shmid, (void *)0, 0);
                 *data = *data + 1;
+                sem_post(y);
             }
         } else if(child_b > 0) {
             waitpid(child_a, &status, WUNTRACED);
             waitpid(child_b, &status, WUNTRACED);
 
             data = shmat(shmid, (void *)0, 0);
-            printf("Value (Race Condition): %d\n", *data);
+            printf("Value (Synchronized): %d\n", *data);
 
             if(shmdt(data) == -1) {
                 perror("shmdt");
@@ -72,5 +86,4 @@ int main() {
             shmctl(shmid, IPC_RMID, NULL);
         }
     }
-
 }

@@ -11,8 +11,11 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+int serverSocket, newSocket;
+struct sockaddr_in serverAddr;
+struct sockaddr_storage serverStorage;
 sem_t x, y;
+socklen_t addr_size;
 pthread_t tid;
 pthread_t readerthreads[100];
 int readercount = 0;
@@ -46,11 +49,6 @@ void* reader(void* param)
 
 int main()
 {
-	int serverSocket, newSocket;
-	struct sockaddr_in serverAddr;
-	struct sockaddr_storage serverStorage;
-
-	socklen_t addr_size;
 	sem_init(&x, 0, 1);
 	sem_init(&y, 0, 1);
 
